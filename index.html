@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý User</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      text-align: center;
+    }
+    #userInput {
+      padding: 8px;
+      width: 250px;
+    }
+    button {
+      padding: 8px 12px;
+      margin-left: 5px;
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background: #007bff;
+      color: white;
+    }
+    .dashboard {
+      margin-top: 20px;
+      padding: 15px;
+      background: #fff;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <h1>Quản lý User</h1>
+  <input type="text" id="userInput" placeholder="Nhập tên user...">
+  <button onclick="addUser()">Thêm User</button>
+  <button onclick="saveHistory()">Lưu lịch sử hôm nay</button>
+  <button onclick="viewHistory()">Xem lịch sử</button>
+
+  <table id="userTable">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Hoàn thành</th>
+        <th>Số lần Comment</th>
+        <th>Hành động</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="dashboard">
+    <h2>Dashboard</h2>
+    <p id="totalComments">Tổng số comment: 0</p>
+  </div>
+
+  <script>
+    let users = [];
+    let totalComments = 0;
+
+    function updateDashboard() {
+      document.getElementById("totalComments").innerText =
+        "Tổng số comment: " + totalComments;
+    }
+
+    function addUser() {
+      let input = document.getElementById("userInput");
+      let name = input.value.trim();
+      if (name === "") return;
+      let user = { name, completed: false, comments: 0 };
+      users.push(user);
+      input.value = "";
+      renderTable();
+    }
+
+    function toggleComplete(index) {
+      users[index].completed = !users[index].completed;
+    }
+
+    function addComment(index) {
+      users[index].comments++;
+      totalComments++;
+      renderTable();
+      updateDashboard();
+    }
+
+    function renderTable() {
+      let tbody = document.querySelector("#userTable tbody");
+      tbody.innerHTML = "";
+      users.forEach((user, index) => {
+        let row = `<tr>
+          <td>${user.name}</td>
+          <td><input type="checkbox" ${user.completed ? "checked" : ""} onclick="toggleComplete(${index})"></td>
+          <td>${user.comments}</td>
+          <td><button onclick="addComment(${index})">+ Comment</button></td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
+    }
+
+    function saveHistory() {
+      let today = new Date().toLocaleDateString("vi-VN");
+      let history = JSON.parse(localStorage.getItem("history") || "{}");
+      history[today] = { users, totalComments };
+      localStorage.setItem("history", JSON.stringify(history));
+      alert("Đã lưu lịch sử ngày " + today);
+    }
+
+    function viewHistory() {
+      let history = JSON.parse(localStorage.getItem("history") || "{}");
+      let msg = "Lịch sử công việc:\n";
+      for (let date in history) {
+        msg += `📅 ${date} - Tổng comment: ${history[date].totalComments}\n`;
+      }
+      alert(msg);
+    }
+  </script>
+</body>
+</html>
