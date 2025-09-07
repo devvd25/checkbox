@@ -76,12 +76,15 @@
   <script>
     let users = [];
 
+    // --- Cập nhật dashboard ---
     function updateDashboard() {
       let total = users.reduce((sum, u) => sum + (parseInt(u.comments) || 0), 0);
       document.getElementById("totalComments").innerText =
         "Tổng số comment: " + total;
+      saveUsers(); // Lưu lại mỗi khi có thay đổi
     }
 
+    // --- Thêm user ---
     function addUser() {
       let input = document.getElementById("userInput");
       let name = input.value.trim();
@@ -93,21 +96,26 @@
       updateDashboard();
     }
 
+    // --- Toggle hoàn thành ---
     function toggleComplete(index) {
       users[index].completed = !users[index].completed;
+      saveUsers();
     }
 
+    // --- Cập nhật comment ---
     function updateComment(index, value) {
       users[index].comments = parseInt(value) || 0;
       updateDashboard();
     }
 
+    // --- Xóa user ---
     function deleteUser(index) {
       users.splice(index, 1);
       renderTable();
       updateDashboard();
     }
 
+    // --- Render bảng ---
     function renderTable() {
       let tbody = document.querySelector("#userTable tbody");
       tbody.innerHTML = "";
@@ -122,15 +130,32 @@
       });
     }
 
+    // --- Lưu user vào localStorage ---
+    function saveUsers() {
+      localStorage.setItem("users", JSON.stringify(users));
+    }
+
+    // --- Tải user từ localStorage ---
+    function loadUsers() {
+      let data = localStorage.getItem("users");
+      if (data) {
+        users = JSON.parse(data);
+        renderTable();
+        updateDashboard();
+      }
+    }
+
+    // --- Lưu lịch sử theo ngày ---
     function saveHistory() {
       let today = new Date().toLocaleDateString("vi-VN");
       let history = JSON.parse(localStorage.getItem("history") || "{}");
       let total = users.reduce((sum, u) => sum + (parseInt(u.comments) || 0), 0);
       history[today] = { users, totalComments: total };
       localStorage.setItem("history", JSON.stringify(history));
-      alert("Đã lưu lịch sử ngày " + today);
+      alert("✅ Đã lưu lịch sử ngày " + today);
     }
 
+    // --- Xem lịch sử ---
     function viewHistory() {
       let history = JSON.parse(localStorage.getItem("history") || "{}");
       let msg = "📜 Lịch sử công việc:\n";
@@ -139,6 +164,9 @@
       }
       alert(msg);
     }
+
+    // --- Khi tải trang thì load user ---
+    window.onload = loadUsers;
   </script>
 </body>
 </html>
