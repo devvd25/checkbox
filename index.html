@@ -76,15 +76,13 @@
   <script>
     let users = [];
 
-    // --- Cập nhật dashboard ---
     function updateDashboard() {
       let total = users.reduce((sum, u) => sum + (parseInt(u.comments) || 0), 0);
       document.getElementById("totalComments").innerText =
         "Tổng số comment: " + total;
-      saveUsers(); // Lưu lại mỗi khi có thay đổi
+      saveUsers();
     }
 
-    // --- Thêm user ---
     function addUser() {
       let input = document.getElementById("userInput");
       let name = input.value.trim();
@@ -96,26 +94,22 @@
       updateDashboard();
     }
 
-    // --- Toggle hoàn thành ---
     function toggleComplete(index) {
       users[index].completed = !users[index].completed;
       saveUsers();
     }
 
-    // --- Cập nhật comment ---
     function updateComment(index, value) {
       users[index].comments = parseInt(value) || 0;
       updateDashboard();
     }
 
-    // --- Xóa user ---
     function deleteUser(index) {
       users.splice(index, 1);
       renderTable();
       updateDashboard();
     }
 
-    // --- Render bảng ---
     function renderTable() {
       let tbody = document.querySelector("#userTable tbody");
       tbody.innerHTML = "";
@@ -130,12 +124,10 @@
       });
     }
 
-    // --- Lưu user vào localStorage ---
     function saveUsers() {
       localStorage.setItem("users", JSON.stringify(users));
     }
 
-    // --- Tải user từ localStorage ---
     function loadUsers() {
       let data = localStorage.getItem("users");
       if (data) {
@@ -145,27 +137,59 @@
       }
     }
 
-    // --- Lưu lịch sử theo ngày ---
     function saveHistory() {
-      let today = new Date().toLocaleDateString("vi-VN");
+      let today = new Date();
+      let key = today.toLocaleDateString("vi-VN"); // dd/mm/yyyy
       let history = JSON.parse(localStorage.getItem("history") || "{}");
       let total = users.reduce((sum, u) => sum + (parseInt(u.comments) || 0), 0);
-      history[today] = { users, totalComments: total };
+      history[key] = { users, totalComments: total };
       localStorage.setItem("history", JSON.stringify(history));
-      alert("✅ Đã lưu lịch sử ngày " + today);
+      alert("✅ Đã lưu lịch sử ngày " + key);
     }
 
-    // --- Xem lịch sử ---
+    // ---- Gom theo tuần ----
+    function getWeekRange(date) {
+      // Lấy ngày (clone tránh lỗi)
+      let d = new Date(date);
+      let day = d.getDay(); // 0=CN, 1=T2,...
+      let diffToMonday = (day === 0 ? -6 : 1) - day; 
+      let monday = new Date(d);
+      monday.setDate(d.getDate() + diffToMonday);
+      let sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return {
+        key: monday.toISOString().slice(0,10), // khóa tuần
+        text: monday.toLocaleDateString("vi-VN") + " - " + sunday.toLocaleDateString("vi-VN")
+      };
+    }
+
     function viewHistory() {
       let history = JSON.parse(localStorage.getItem("history") || "{}");
-      let msg = "📜 Lịch sử công việc:\n";
-      for (let date in history) {
-        msg += `📅 ${date} - Tổng comment: ${history[date].totalComments}\n`;
+      if (Object.keys(history).length === 0) {
+        alert("Chưa có lịch sử.");
+        return;
+      }
+
+      let weeklyData = {};
+
+      for (let dateStr in history) {
+        // dateStr = dd/mm/yyyy
+        let parts = dateStr.split("/");
+        let d = new Date(parts[2], parts[1]-1, parts[0]);
+        let weekInfo = getWeekRange(d);
+        if (!weeklyData[weekInfo.key]) {
+          weeklyData[weekInfo.key] = { range: weekInfo.text, total: 0 };
+        }
+        weeklyData[weekInfo.key].total += history[dateStr].totalComments;
+      }
+
+      let msg = "📅 Lịch sử theo tuần:\n";
+      for (let key in weeklyData) {
+        msg += `Tuần (${weeklyData[key].range}): Tổng comment = ${weeklyData[key].total}\n`;
       }
       alert(msg);
     }
 
-    // --- Khi tải trang thì load user ---
     window.onload = loadUsers;
   </script>
 </body>
