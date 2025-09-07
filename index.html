@@ -42,6 +42,11 @@
       background: #fff;
       border: 1px solid #ddd;
     }
+    input[type="number"] {
+      width: 70px;
+      padding: 5px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -70,11 +75,11 @@
 
   <script>
     let users = [];
-    let totalComments = 0;
 
     function updateDashboard() {
+      let total = users.reduce((sum, u) => sum + (parseInt(u.comments) || 0), 0);
       document.getElementById("totalComments").innerText =
-        "Tổng số comment: " + totalComments;
+        "Tổng số comment: " + total;
     }
 
     function addUser() {
@@ -85,15 +90,20 @@
       users.push(user);
       input.value = "";
       renderTable();
+      updateDashboard();
     }
 
     function toggleComplete(index) {
       users[index].completed = !users[index].completed;
     }
 
-    function addComment(index) {
-      users[index].comments++;
-      totalComments++;
+    function updateComment(index, value) {
+      users[index].comments = parseInt(value) || 0;
+      updateDashboard();
+    }
+
+    function deleteUser(index) {
+      users.splice(index, 1);
       renderTable();
       updateDashboard();
     }
@@ -105,8 +115,8 @@
         let row = `<tr>
           <td>${user.name}</td>
           <td><input type="checkbox" ${user.completed ? "checked" : ""} onclick="toggleComplete(${index})"></td>
-          <td>${user.comments}</td>
-          <td><button onclick="addComment(${index})">+ Comment</button></td>
+          <td><input type="number" value="${user.comments}" min="0" onchange="updateComment(${index}, this.value)"></td>
+          <td><button onclick="deleteUser(${index})">Xóa</button></td>
         </tr>`;
         tbody.innerHTML += row;
       });
@@ -115,14 +125,15 @@
     function saveHistory() {
       let today = new Date().toLocaleDateString("vi-VN");
       let history = JSON.parse(localStorage.getItem("history") || "{}");
-      history[today] = { users, totalComments };
+      let total = users.reduce((sum, u) => sum + (parseInt(u.comments) || 0), 0);
+      history[today] = { users, totalComments: total };
       localStorage.setItem("history", JSON.stringify(history));
       alert("Đã lưu lịch sử ngày " + today);
     }
 
     function viewHistory() {
       let history = JSON.parse(localStorage.getItem("history") || "{}");
-      let msg = "Lịch sử công việc:\n";
+      let msg = "📜 Lịch sử công việc:\n";
       for (let date in history) {
         msg += `📅 ${date} - Tổng comment: ${history[date].totalComments}\n`;
       }
