@@ -3,75 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <title>Quản lý User</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f5f5f5;
-    }
-    h1 {
-      text-align: center;
-    }
-    #userInput {
-      padding: 8px;
-      width: 250px;
-    }
-    button {
-      padding: 8px 12px;
-      margin-left: 5px;
-      cursor: pointer;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-      background: #fff;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 10px;
-      text-align: center;
-    }
-    th {
-      background: #007bff;
-      color: white;
+      background: #f8f9fa;
     }
     .dashboard {
       margin-top: 20px;
-      padding: 15px;
-      background: #fff;
-      border: 1px solid #ddd;
     }
-    input[type="number"] {
-      width: 70px;
-      padding: 5px;
-      text-align: center;
+    .table-summary {
+      background: #e9ecef;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <h1>Quản lý User</h1>
-  <input type="text" id="userInput" placeholder="Nhập tên user...">
-  <button onclick="addUser()">Thêm User</button>
-  <button onclick="saveHistory()">Lưu lịch sử hôm nay</button>
-  <button onclick="viewHistory()">Xem lịch sử</button>
+  <div class="container mt-4">
+    <h1 class="text-center mb-4">📋 Quản lý User</h1>
 
-  <table id="userTable">
-    <thead>
-      <tr>
-        <th>User</th>
-        <th>Hoàn thành</th>
-        <th>Số lần Comment</th>
-        <th>Hành động</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <div class="d-flex mb-3">
+      <input type="text" id="userInput" class="form-control me-2" placeholder="Nhập tên user...">
+      <button class="btn btn-primary me-2" onclick="addUser()">➕ Thêm User</button>
+      <button class="btn btn-success me-2" onclick="saveHistory()">💾 Lưu lịch sử hôm nay</button>
+      <button class="btn btn-info" onclick="viewHistory()">📅 Xem lịch sử</button>
+    </div>
 
-  <div class="dashboard">
-    <h2>Dashboard</h2>
-    <p id="totalComments">Tổng số comment: 0</p>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <table class="table table-striped table-hover" id="userTable">
+          <thead class="table-dark">
+            <tr>
+              <th>User</th>
+              <th>Hoàn thành</th>
+              <th>Số lần Comment</th>
+              <th>Hành động</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="dashboard card shadow-sm mt-4">
+      <div class="card-body">
+        <h5 class="card-title">📊 Dashboard</h5>
+        <p id="totalComments" class="fs-5">Tổng số comment: 0</p>
+      </div>
+    </div>
   </div>
+
+  <!-- Modal hiển thị lịch sử -->
+  <div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">📅 Lịch sử theo tuần & tháng</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="historyContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
     let users = [];
@@ -116,9 +114,9 @@
       users.forEach((user, index) => {
         let row = `<tr>
           <td>${user.name}</td>
-          <td><input type="checkbox" ${user.completed ? "checked" : ""} onclick="toggleComplete(${index})"></td>
-          <td><input type="number" value="${user.comments}" min="0" onchange="updateComment(${index}, this.value)"></td>
-          <td><button onclick="deleteUser(${index})">Xóa</button></td>
+          <td><input class="form-check-input" type="checkbox" ${user.completed ? "checked" : ""} onclick="toggleComplete(${index})"></td>
+          <td><input type="number" class="form-control text-center" value="${user.comments}" min="0" onchange="updateComment(${index}, this.value)"></td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteUser(${index})">🗑️ Xóa</button></td>
         </tr>`;
         tbody.innerHTML += row;
       });
@@ -147,47 +145,69 @@
       alert("✅ Đã lưu lịch sử ngày " + key);
     }
 
-    // ---- Gom theo tuần ----
     function getWeekRange(date) {
-      // Lấy ngày (clone tránh lỗi)
       let d = new Date(date);
-      let day = d.getDay(); // 0=CN, 1=T2,...
+      let day = d.getDay(); 
       let diffToMonday = (day === 0 ? -6 : 1) - day; 
       let monday = new Date(d);
       monday.setDate(d.getDate() + diffToMonday);
       let sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
       return {
-        key: monday.toISOString().slice(0,10), // khóa tuần
+        key: monday.toISOString().slice(0,10),
         text: monday.toLocaleDateString("vi-VN") + " - " + sunday.toLocaleDateString("vi-VN")
       };
     }
 
     function viewHistory() {
       let history = JSON.parse(localStorage.getItem("history") || "{}");
+      let container = document.getElementById("historyContent");
+      container.innerHTML = "";
+
       if (Object.keys(history).length === 0) {
-        alert("Chưa có lịch sử.");
-        return;
-      }
+        container.innerHTML = "<p>Chưa có lịch sử</p>";
+      } else {
+        // Gom theo tháng -> tuần
+        let monthlyData = {};
+        for (let dateStr in history) {
+          let parts = dateStr.split("/");
+          let d = new Date(parts[2], parts[1]-1, parts[0]);
+          let monthKey = (d.getMonth()+1) + "/" + d.getFullYear();
+          let weekInfo = getWeekRange(d);
 
-      let weeklyData = {};
-
-      for (let dateStr in history) {
-        // dateStr = dd/mm/yyyy
-        let parts = dateStr.split("/");
-        let d = new Date(parts[2], parts[1]-1, parts[0]);
-        let weekInfo = getWeekRange(d);
-        if (!weeklyData[weekInfo.key]) {
-          weeklyData[weekInfo.key] = { range: weekInfo.text, total: 0 };
+          if (!monthlyData[monthKey]) monthlyData[monthKey] = {};
+          if (!monthlyData[monthKey][weekInfo.key]) {
+            monthlyData[monthKey][weekInfo.key] = { range: weekInfo.text, total: 0 };
+          }
+          monthlyData[monthKey][weekInfo.key].total += history[dateStr].totalComments;
         }
-        weeklyData[weekInfo.key].total += history[dateStr].totalComments;
+
+        for (let month in monthlyData) {
+          let html = `<h5 class="mt-3">📆 Tháng ${month}</h5>
+                      <table class="table table-bordered">
+                        <thead class="table-light">
+                          <tr><th>Tuần</th><th>Tổng Comment</th></tr>
+                        </thead>
+                        <tbody>`;
+          let monthTotal = 0;
+          for (let week in monthlyData[month]) {
+            html += `<tr>
+                      <td>${monthlyData[month][week].range}</td>
+                      <td>${monthlyData[month][week].total}</td>
+                     </tr>`;
+            monthTotal += monthlyData[month][week].total;
+          }
+          html += `<tr class="table-summary">
+                     <td>Tổng tháng ${month}</td>
+                     <td>${monthTotal}</td>
+                   </tr>`;
+          html += "</tbody></table>";
+          container.innerHTML += html;
+        }
       }
 
-      let msg = "📅 Lịch sử theo tuần:\n";
-      for (let key in weeklyData) {
-        msg += `Tuần (${weeklyData[key].range}): Tổng comment = ${weeklyData[key].total}\n`;
-      }
-      alert(msg);
+      let modal = new bootstrap.Modal(document.getElementById("historyModal"));
+      modal.show();
     }
 
     window.onload = loadUsers;
