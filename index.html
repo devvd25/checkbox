@@ -188,6 +188,37 @@
       };
     }
 
+    // Xóa tuần trong tháng
+    function deleteWeek(monthKey, weekKey) {
+      let history = JSON.parse(localStorage.getItem("history") || "{}");
+      for (let dateStr in history) {
+        let parts = dateStr.split("/");
+        let d = new Date(parts[2], parts[1]-1, parts[0]);
+        let wk = getWeekRange(d);
+        let mk = (d.getMonth()+1) + "/" + d.getFullYear();
+        if (mk === monthKey && wk.key === weekKey) {
+          delete history[dateStr];
+        }
+      }
+      localStorage.setItem("history", JSON.stringify(history));
+      viewHistory(); // refresh modal
+    }
+
+    // Xóa cả tháng
+    function deleteMonth(monthKey) {
+      let history = JSON.parse(localStorage.getItem("history") || "{}");
+      for (let dateStr in history) {
+        let parts = dateStr.split("/");
+        let d = new Date(parts[2], parts[1]-1, parts[0]);
+        let mk = (d.getMonth()+1) + "/" + d.getFullYear();
+        if (mk === monthKey) {
+          delete history[dateStr];
+        }
+      }
+      localStorage.setItem("history", JSON.stringify(history));
+      viewHistory(); // refresh modal
+    }
+
     function viewHistory() {
       let history = JSON.parse(localStorage.getItem("history") || "{}");
       let container = document.getElementById("historyContent");
@@ -214,7 +245,7 @@
           let html = `<h5 class="mt-3">📆 Tháng ${month}</h5>
                       <table class="table table-bordered">
                         <thead class="table-light">
-                          <tr><th>Tuần</th><th>Tổng Comment</th></tr>
+                          <tr><th>Tuần</th><th>Tổng Comment</th><th>Hành động</th></tr>
                         </thead>
                         <tbody>`;
           let monthTotal = 0;
@@ -222,12 +253,14 @@
             html += `<tr>
                       <td>${monthlyData[month][week].range}</td>
                       <td>${monthlyData[month][week].total}</td>
+                      <td><button class="btn btn-sm btn-danger" onclick="deleteWeek('${month}','${week}')">❌ Xóa tuần</button></td>
                      </tr>`;
             monthTotal += monthlyData[month][week].total;
           }
           html += `<tr class="table-summary">
                      <td>Tổng tháng ${month}</td>
                      <td>${monthTotal}</td>
+                     <td><button class="btn btn-sm btn-danger" onclick="deleteMonth('${month}')">❌ Xóa tháng</button></td>
                    </tr>`;
           html += "</tbody></table>";
           container.innerHTML += html;
