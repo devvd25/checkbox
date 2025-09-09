@@ -1,39 +1,46 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Quản lý User</title>
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <style>
-    body {
-      background: #f8f9fa;
-    }
-    .dashboard {
-      margin-top: 20px;
-    }
-    .table-summary {
-      background: #e9ecef;
-      font-weight: bold;
-    }
-    .icon-btn {
-      cursor: pointer;
-      margin-left: 8px;
-      color: #0d6efd;
-    }
+    body { background:#f8f9fa; }
+    .dashboard { margin-top:20px; }
+    .table-summary { background:#e9ecef; font-weight:bold; }
+    .icon-btn { cursor:pointer; margin-left:8px; color:#0d6efd; }
+    .tag-badge { margin:0 4px 4px 0; }
+    .stat-card { min-width: 260px; }
   </style>
 </head>
 <body>
   <div class="container mt-4">
     <h1 class="text-center mb-4">📋 Quản lý User</h1>
 
-    <div class="d-flex mb-3">
-      <input type="text" id="userInput" class="form-control me-2" placeholder="Nhập tên user...">
-      <button class="btn btn-primary me-2" onclick="addUser()">➕ Thêm User</button>
-      <button class="btn btn-success me-2" onclick="saveHistory()">💾 Lưu lịch sử hôm nay</button>
-      <button class="btn btn-info" onclick="viewHistory()">📅 Xem lịch sử</button>
+    <!-- Thanh công cụ -->
+    <div class="row g-2 mb-3">
+      <div class="col-12 col-md-4">
+        <input type="text" id="userInput" class="form-control" placeholder="Nhập tên user..."/>
+      </div>
+      <div class="col-12 col-md-auto d-grid d-md-block">
+        <button class="btn btn-primary w-100" onclick="addUser()">➕ Thêm User</button>
+      </div>
+      <div class="col-6 col-md-auto d-grid d-md-block">
+        <button class="btn btn-success w-100" onclick="saveHistory()">💾 Lưu lịch sử hôm nay</button>
+      </div>
+      <div class="col-6 col-md-auto d-grid d-md-block">
+        <button class="btn btn-info w-100" onclick="viewHistory()">📅 Xem lịch sử</button>
+      </div>
+      <!-- Bộ lọc hashtag -->
+      <div class="col-12 col-md-3">
+        <div class="input-group">
+          <span class="input-group-text">Lọc tag</span>
+          <select id="filterTag" class="form-select" onchange="applyFilterTag(this.value)"></select>
+        </div>
+      </div>
     </div>
 
+    <!-- Bảng users -->
     <div class="card shadow-sm">
       <div class="card-body">
         <table class="table table-striped table-hover" id="userTable">
@@ -42,6 +49,7 @@
               <th>User</th>
               <th>Hoàn thành</th>
               <th>Số lần Comment</th>
+              <th>Hashtag</th>
               <th>Hành động</th>
             </tr>
           </thead>
@@ -50,245 +58,369 @@
       </div>
     </div>
 
-    <div class="dashboard card shadow-sm mt-4">
-      <div class="card-body">
-        <h5 class="card-title">📊 Dashboard</h5>
-        <p id="totalComments" class="fs-5">
-          Tổng số comment: 0 
-          <span class="icon-btn" onclick="viewUserComments()" title="Xem chi tiết">👁</span>
-        </p>
+    <!-- Dashboard -->
+    <div class="dashboard">
+      <div class="row g-3">
+        <div class="col-12 col-lg-4">
+          <div class="card shadow-sm stat-card">
+            <div class="card-body">
+              <h5 class="card-title">📊 Tổng quan</h5>
+              <p id="totalComments" class="fs-5 mb-0">
+                Tổng số comment: 0
+                <span class="icon-btn" onclick="viewUserComments()" title="Xem chi tiết">👁</span>
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-8">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h6 class="mb-3">🏷️ Thống kê theo Hashtag</h6>
+              <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width:35%">Hashtag</th>
+                      <th style="width:25%">Số user</th>
+                      <th style="width:40%">Tổng comment</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tagStatsBody"></tbody>
+                </table>
+              </div>
+              <small class="text-muted d-block mt-2">* Bao gồm (không) cho các user chưa gán hashtag.</small>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal hiển thị lịch sử -->
+  <!-- Modal: Lịch sử tuần & tháng -->
   <div class="modal fade" id="historyModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">📅 Lịch sử theo tuần & tháng</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div id="historyContent"></div>
-        </div>
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">📅 Lịch sử theo tuần & tháng</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-    </div>
+      <div class="modal-body"><div id="historyContent"></div></div>
+    </div></div>
   </div>
 
-  <!-- Modal hiển thị chi tiết comment user -->
+  <!-- Modal: Chi tiết comment theo user -->
   <div class="modal fade" id="userCommentsModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">👥 Chi tiết comment theo user</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <table class="table table-bordered">
-            <thead class="table-light">
-              <tr><th>User</th><th>Số comment</th></tr>
-            </thead>
-            <tbody id="userCommentsBody"></tbody>
-          </table>
-        </div>
+    <div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">👥 Chi tiết comment theo user</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-    </div>
+      <div class="modal-body">
+        <table class="table table-bordered">
+          <thead class="table-light">
+            <tr><th>User</th><th>Số comment</th><th>Hashtag</th></tr>
+          </thead>
+          <tbody id="userCommentsBody"></tbody>
+        </table>
+      </div>
+    </div></div>
   </div>
 
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Modal: Tag Manager -->
+  <div class="modal fade" id="tagManagerModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">🏷️ Quản lý Hashtag</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3 d-flex gap-2">
+          <input type="text" id="newTagInput" class="form-control" placeholder="Nhập hashtag mới (ví dụ: SALE)"/>
+          <button class="btn btn-primary" onclick="addNewTag()">＋ Thêm</button>
+        </div>
+        <div id="tagList" class="d-flex flex-wrap"></div>
+        <small class="text-muted d-block mt-2">* Xóa hashtag sẽ bỏ gán ở các user đang dùng hashtag đó.</small>
+      </div>
+    </div></div>
+  </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     let users = [];
+    let tags  = [];
+    let currentFilterTag = ""; // "" = All
 
-    function updateDashboard() {
-      let total = users.reduce((sum, u) => sum + (parseInt(u.comments) || 0), 0);
-      document.getElementById("totalComments").innerHTML =
-        "Tổng số comment: " + total + 
-        ' <span class="icon-btn" onclick="viewUserComments()" title="Xem chi tiết">👁</span>';
-      saveUsers();
+    // ---------- Tags ----------
+    function initTags() {
+      const saved = localStorage.getItem("tags");
+      if (saved) tags = JSON.parse(saved);
+      else {
+        tags = ["XS","11PRM"];
+        localStorage.setItem("tags", JSON.stringify(tags));
+      }
+      renderFilterOptions();
+    }
+    function saveTags(){ localStorage.setItem("tags", JSON.stringify(tags)); }
+    function renderFilterOptions(){
+      const sel = document.getElementById("filterTag");
+      sel.innerHTML = `<option value="">All</option>` +
+        tags.map(t=>`<option value="${t}" ${currentFilterTag===t?"selected":""}>${t}</option>`).join("") +
+        `<option value="(none)" ${currentFilterTag==="(none)"?"selected":""}>(không)</option>`;
     }
 
-    function addUser() {
-      let input = document.getElementById("userInput");
-      let name = input.value.trim();
-      if (name === "") return;
-      let user = { name, completed: false, comments: 0 };
-      users.push(user);
+    // ---------- Users ----------
+    function saveUsers(){ localStorage.setItem("users", JSON.stringify(users)); }
+    function loadUsers(){
+      initTags();
+      const data = localStorage.getItem("users");
+      if (data) users = JSON.parse(data);
+      renderTable();
+      updateDashboard();
+    }
+    function addUser(){
+      const input = document.getElementById("userInput");
+      const name = (input.value||"").trim();
+      if (!name) return;
+      users.push({ name, completed:false, comments:0, tag:"" });
       input.value = "";
       renderTable();
       updateDashboard();
     }
-
-    function toggleComplete(index) {
-      users[index].completed = !users[index].completed;
-      saveUsers();
-    }
-
-    function updateComment(index, value) {
-      users[index].comments = parseInt(value) || 0;
-      updateDashboard();
-    }
-
-    function deleteUser(index) {
-      users.splice(index, 1);
+    function deleteUser(i){
+      users.splice(i,1);
       renderTable();
       updateDashboard();
     }
+    function toggleComplete(i){
+      users[i].completed = !users[i].completed;
+      saveUsers();
+    }
+    function updateComment(i, v){
+      users[i].comments = parseInt(v)||0;
+      updateDashboard();
+    }
+    function updateUserTag(i, v){
+      users[i].tag = v;
+      saveUsers();
+      updateDashboard(); // để thống kê theo tag cập nhật ngay
+    }
 
-    function renderTable() {
-      let tbody = document.querySelector("#userTable tbody");
+    // ---------- Lọc theo hashtag ----------
+    function applyFilterTag(val){
+      currentFilterTag = val;
+      renderTable();
+    }
+    function userPassFilter(u){
+      if (currentFilterTag === "") return true; // All
+      if (currentFilterTag === "(none)") return !u.tag;
+      return u.tag === currentFilterTag;
+    }
+
+    // ---------- Render bảng users ----------
+    function renderTable(){
+      const tbody = document.querySelector("#userTable tbody");
       tbody.innerHTML = "";
-      users.forEach((user, index) => {
-        let row = `<tr>
-          <td>${user.name}</td>
-          <td><input class="form-check-input" type="checkbox" ${user.completed ? "checked" : ""} onclick="toggleComplete(${index})"></td>
-          <td><input type="number" class="form-control text-center" value="${user.comments}" min="0" onchange="updateComment(${index}, this.value)"></td>
-          <td><button class="btn btn-danger btn-sm" onclick="deleteUser(${index})">🗑️ Xóa</button></td>
-        </tr>`;
-        tbody.innerHTML += row;
+      // Build dropdown options
+      const baseOptions = ['<option value="">(không)</option>'].concat(
+        tags.map(t=>`<option value="${t}">${t}</option>`)
+      ).join("");
+      users.forEach((u,i)=>{
+        if (!userPassFilter(u)) return;
+        const options = baseOptions.replace(
+          `value="${u.tag}"`,
+          `value="${u.tag}" selected`
+        );
+        const row = `
+          <tr>
+            <td>${u.name}</td>
+            <td><input class="form-check-input" type="checkbox" ${u.completed?"checked":""} onclick="toggleComplete(${i})"></td>
+            <td><input type="number" class="form-control text-center" value="${u.comments}" min="0" onchange="updateComment(${i}, this.value)"></td>
+            <td style="min-width:160px;">
+              <div class="input-group">
+                <select class="form-select" onchange="updateUserTag(${i}, this.value)">${options}</select>
+                <button class="btn btn-outline-primary" type="button" title="Quản lý hashtag" onclick="openTagManager()">＋</button>
+              </div>
+            </td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteUser(${i})">🗑️ Xóa</button></td>
+          </tr>`;
+        tbody.insertAdjacentHTML("beforeend", row);
+      });
+      saveUsers();
+    }
+
+    // ---------- Tag Manager ----------
+    function openTagManager(){ renderTagList(); new bootstrap.Modal('#tagManagerModal').show(); }
+    function renderTagList(){
+      const box = document.getElementById("tagList");
+      box.innerHTML = "";
+      if (tags.length===0){ box.innerHTML = '<span class="text-muted">Chưa có hashtag nào.</span>'; return; }
+      tags.forEach((t,idx)=>{
+        const el = document.createElement("div");
+        el.className = "badge text-bg-secondary tag-badge d-flex align-items-center";
+        el.innerHTML = `<span>${t}</span><button class="btn btn-sm btn-light ms-2 py-0" onclick="deleteTag(${idx})">✕</button>`;
+        box.appendChild(el);
       });
     }
-
-    function saveUsers() {
-      localStorage.setItem("users", JSON.stringify(users));
+    function addNewTag(){
+      const ip = document.getElementById("newTagInput");
+      let v = (ip.value||"").trim().replace(/\s+/g,"");
+      if (!v || tags.includes(v)) { ip.value=""; return; }
+      tags.push(v); saveTags(); ip.value="";
+      renderTagList(); renderFilterOptions(); renderTable(); updateDashboard();
+    }
+    function deleteTag(index){
+      const removed = tags.splice(index,1)[0];
+      users = users.map(u => u.tag===removed ? {...u, tag:""} : u);
+      saveTags(); saveUsers();
+      renderTagList(); renderFilterOptions(); renderTable(); updateDashboard();
     }
 
-    function loadUsers() {
-      let data = localStorage.getItem("users");
-      if (data) {
-        users = JSON.parse(data);
-        renderTable();
-        updateDashboard();
-      }
+    // ---------- Dashboard ----------
+    function computeTagStats(){
+      // Tập hợp tất cả nhãn gồm: (không) + các tag hiện có
+      const allTags = ["(không)", ...tags];
+      const stats = {};
+      allTags.forEach(t=>stats[t]={ users:0, comments:0 });
+      users.forEach(u=>{
+        const key = u.tag ? u.tag : "(không)";
+        stats[key].users += 1;
+        stats[key].comments += (parseInt(u.comments)||0);
+      });
+      return stats;
+    }
+    function renderTagStats(){
+      const stats = computeTagStats();
+      const body = document.getElementById("tagStatsBody");
+      body.innerHTML = "";
+      Object.keys(stats).forEach(k=>{
+        body.insertAdjacentHTML("beforeend", `
+          <tr>
+            <td>${k}</td>
+            <td>${stats[k].users}</td>
+            <td>${stats[k].comments}</td>
+          </tr>`);
+      });
+    }
+    function updateDashboard(){
+      const total = users.reduce((s,u)=> s+(parseInt(u.comments)||0), 0);
+      document.getElementById("totalComments").innerHTML =
+        "Tổng số comment: " + total +
+        ' <span class="icon-btn" onclick="viewUserComments()" title="Xem chi tiết">👁</span>';
+      renderTagStats();
+      saveUsers();
     }
 
-    function saveHistory() {
-      let today = new Date();
-      let key = today.toLocaleDateString("vi-VN"); 
-      let history = JSON.parse(localStorage.getItem("history") || "{}");
-      let total = users.reduce((sum, u) => sum + (parseInt(u.comments) || 0), 0);
+    // ---------- Lịch sử (ngày → tuần → tháng) ----------
+    function saveHistory(){
+      const today = new Date();
+      const key = today.toLocaleDateString("vi-VN"); // dd/mm/yyyy
+      const history = JSON.parse(localStorage.getItem("history")||"{}");
+      const total = users.reduce((s,u)=> s+(parseInt(u.comments)||0), 0);
       history[key] = { users, totalComments: total };
       localStorage.setItem("history", JSON.stringify(history));
       alert("✅ Đã lưu lịch sử ngày " + key);
     }
-
-    function getWeekRange(date) {
-      let d = new Date(date);
-      let day = d.getDay(); 
-      let diffToMonday = (day === 0 ? -6 : 1) - day; 
-      let monday = new Date(d);
-      monday.setDate(d.getDate() + diffToMonday);
-      let sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
-      return {
-        key: monday.toISOString().slice(0,10),
-        text: monday.toLocaleDateString("vi-VN") + " - " + sunday.toLocaleDateString("vi-VN")
-      };
+    function getWeekRange(date){
+      const d = new Date(date);
+      const day = d.getDay();
+      const diffToMonday = (day===0 ? -6 : 1) - day;
+      const monday = new Date(d); monday.setDate(d.getDate()+diffToMonday);
+      const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+      return { key: monday.toISOString().slice(0,10),
+               text: monday.toLocaleDateString("vi-VN")+" - "+sunday.toLocaleDateString("vi-VN") };
     }
-
-    // Xóa tuần trong tháng
-    function deleteWeek(monthKey, weekKey) {
-      let history = JSON.parse(localStorage.getItem("history") || "{}");
-      for (let dateStr in history) {
-        let parts = dateStr.split("/");
-        let d = new Date(parts[2], parts[1]-1, parts[0]);
-        let wk = getWeekRange(d);
-        let mk = (d.getMonth()+1) + "/" + d.getFullYear();
-        if (mk === monthKey && wk.key === weekKey) {
-          delete history[dateStr];
-        }
+    function deleteWeek(monthKey, weekKey){
+      const history = JSON.parse(localStorage.getItem("history")||"{}");
+      for (const dateStr in history){
+        const [dd,mm,yyyy] = dateStr.split("/");
+        const d = new Date(yyyy, mm-1, dd);
+        const mk = (d.getMonth()+1)+"/"+d.getFullYear();
+        const wk = getWeekRange(d);
+        if (mk===monthKey && wk.key===weekKey) delete history[dateStr];
       }
       localStorage.setItem("history", JSON.stringify(history));
-      viewHistory(); // refresh modal
+      viewHistory();
     }
-
-    // Xóa cả tháng
-    function deleteMonth(monthKey) {
-      let history = JSON.parse(localStorage.getItem("history") || "{}");
-      for (let dateStr in history) {
-        let parts = dateStr.split("/");
-        let d = new Date(parts[2], parts[1]-1, parts[0]);
-        let mk = (d.getMonth()+1) + "/" + d.getFullYear();
-        if (mk === monthKey) {
-          delete history[dateStr];
-        }
+    function deleteMonth(monthKey){
+      const history = JSON.parse(localStorage.getItem("history")||"{}");
+      for (const dateStr in history){
+        const [dd,mm,yyyy] = dateStr.split("/");
+        const d = new Date(yyyy, mm-1, dd);
+        const mk = (d.getMonth()+1)+"/"+d.getFullYear();
+        if (mk===monthKey) delete history[dateStr];
       }
       localStorage.setItem("history", JSON.stringify(history));
-      viewHistory(); // refresh modal
+      viewHistory();
     }
-
-    function viewHistory() {
-      let history = JSON.parse(localStorage.getItem("history") || "{}");
-      let container = document.getElementById("historyContent");
+    function viewHistory(){
+      const history = JSON.parse(localStorage.getItem("history")||"{}");
+      const container = document.getElementById("historyContent");
       container.innerHTML = "";
-
-      if (Object.keys(history).length === 0) {
+      if (Object.keys(history).length===0){
         container.innerHTML = "<p>Chưa có lịch sử</p>";
       } else {
-        let monthlyData = {};
-        for (let dateStr in history) {
-          let parts = dateStr.split("/");
-          let d = new Date(parts[2], parts[1]-1, parts[0]);
-          let monthKey = (d.getMonth()+1) + "/" + d.getFullYear();
-          let weekInfo = getWeekRange(d);
-
+        const monthlyData = {};
+        for (const dateStr in history){
+          const [dd,mm,yyyy] = dateStr.split("/");
+          const d = new Date(yyyy, mm-1, dd);
+          const monthKey = (d.getMonth()+1)+"/"+d.getFullYear();
+          const weekInfo = getWeekRange(d);
           if (!monthlyData[monthKey]) monthlyData[monthKey] = {};
           if (!monthlyData[monthKey][weekInfo.key]) {
-            monthlyData[monthKey][weekInfo.key] = { range: weekInfo.text, total: 0 };
+            monthlyData[monthKey][weekInfo.key] = { range: weekInfo.text, total:0 };
           }
           monthlyData[monthKey][weekInfo.key].total += history[dateStr].totalComments;
         }
-
-        for (let month in monthlyData) {
-          let html = `<h5 class="mt-3">📆 Tháng ${month}</h5>
-                      <table class="table table-bordered">
-                        <thead class="table-light">
-                          <tr><th>Tuần</th><th>Tổng Comment</th><th>Hành động</th></tr>
-                        </thead>
-                        <tbody>`;
+        Object.keys(monthlyData).sort((a,b)=>{
+          const [ma,ya]=a.split("/").map(Number), [mb,yb]=b.split("/").map(Number);
+          return ya!==yb ? ya-yb : ma-mb;
+        }).forEach(month=>{
+          let html = `
+            <h5 class="mt-3">📆 Tháng ${month}</h5>
+            <table class="table table-bordered">
+              <thead class="table-light">
+                <tr><th>Tuần</th><th>Tổng Comment</th><th>Hành động</th></tr>
+              </thead><tbody>`;
           let monthTotal = 0;
-          for (let week in monthlyData[month]) {
+          Object.keys(monthlyData[month]).sort().forEach(weekKey=>{
+            const row = monthlyData[month][weekKey];
+            monthTotal += row.total;
             html += `<tr>
-                      <td>${monthlyData[month][week].range}</td>
-                      <td>${monthlyData[month][week].total}</td>
-                      <td><button class="btn btn-sm btn-danger" onclick="deleteWeek('${month}','${week}')">❌ Xóa tuần</button></td>
-                     </tr>`;
-            monthTotal += monthlyData[month][week].total;
-          }
+              <td>${row.range}</td>
+              <td>${row.total}</td>
+              <td><button class="btn btn-sm btn-danger" onclick="deleteWeek('${month}','${weekKey}')">❌ Xóa tuần</button></td>
+            </tr>`;
+          });
           html += `<tr class="table-summary">
-                     <td>Tổng tháng ${month}</td>
-                     <td>${monthTotal}</td>
-                     <td><button class="btn btn-sm btn-danger" onclick="deleteMonth('${month}')">❌ Xóa tháng</button></td>
-                   </tr>`;
-          html += "</tbody></table>";
-          container.innerHTML += html;
-        }
-      }
-
-      let modal = new bootstrap.Modal(document.getElementById("historyModal"));
-      modal.show();
-    }
-
-    // Modal hiển thị chi tiết comment user
-    function viewUserComments() {
-      let tbody = document.getElementById("userCommentsBody");
-      tbody.innerHTML = "";
-      if (users.length === 0) {
-        tbody.innerHTML = "<tr><td colspan='2'>Chưa có user</td></tr>";
-      } else {
-        users.forEach(u => {
-          tbody.innerHTML += `<tr>
-                                <td>${u.name}</td>
-                                <td>${u.comments}</td>
-                              </tr>`;
+            <td>Tổng tháng ${month}</td>
+            <td>${monthTotal}</td>
+            <td><button class="btn btn-sm btn-danger" onclick="deleteMonth('${month}')">❌ Xóa tháng</button></td>
+          </tr></tbody></table>`;
+          container.insertAdjacentHTML("beforeend", html);
         });
       }
-      let modal = new bootstrap.Modal(document.getElementById("userCommentsModal"));
-      modal.show();
+      new bootstrap.Modal('#historyModal').show();
     }
 
+    // ---------- Modal: chi tiết user ----------
+    function viewUserComments(){
+      const tbody = document.getElementById("userCommentsBody");
+      tbody.innerHTML = "";
+      if (users.length===0){
+        tbody.innerHTML = "<tr><td colspan='3'>Chưa có user</td></tr>";
+      } else {
+        users.forEach(u=>{
+          tbody.insertAdjacentHTML("beforeend", `
+            <tr>
+              <td>${u.name}</td>
+              <td>${u.comments}</td>
+              <td>${u.tag || "<i class='text-muted'>(không)</i>"}</td>
+            </tr>`);
+        });
+      }
+      new bootstrap.Modal('#userCommentsModal').show();
+    }
+
+    // ---------- Start ----------
     window.onload = loadUsers;
   </script>
 </body>
