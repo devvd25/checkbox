@@ -11,6 +11,7 @@
     .icon-btn { cursor:pointer; margin-left:8px; color:#0d6efd; }
     .tag-badge { margin:0 4px 4px 0; }
     .stat-card { min-width: 260px; }
+    .autosave-badge { font-size: 12px; }
   </style>
 </head>
 <body>
@@ -18,19 +19,21 @@
     <h1 class="text-center mb-4">📋 Quản lý User</h1>
 
     <!-- Thanh công cụ -->
-    <div class="row g-2 mb-3">
-      <div class="col-12 col-md-4">
+    <div class="row g-2 mb-2">
+      <div class="col-12 col-md-3">
         <input type="text" id="userInput" class="form-control" placeholder="Nhập tên user..."/>
       </div>
-      <div class="col-12 col-md-auto d-grid d-md-block">
+      <div class="col-6 col-md-auto d-grid d-md-block">
         <button class="btn btn-primary w-100" onclick="addUser()">➕ Thêm User</button>
       </div>
+      <!-- Nút lưu thủ công không còn cần thiết; nếu thích bạn có thể ẩn bằng CSS -->
       <div class="col-6 col-md-auto d-grid d-md-block">
-        <button class="btn btn-success w-100" onclick="saveHistory()">💾 Lưu lịch sử hôm nay</button>
+        <button class="btn btn-outline-secondary w-100" onclick="saveHistory()" title="Không cần bấm nữa, đã bật tự lưu">💾 Lưu (tùy chọn)</button>
       </div>
-      <div class="col-6 col-md-auto d-grid d-md-block">
+      <div class="col-12 col-md-auto d-grid d-md-block">
         <button class="btn btn-info w-100" onclick="viewHistory()">📅 Xem lịch sử</button>
       </div>
+
       <!-- Bộ lọc hashtag -->
       <div class="col-12 col-md-3">
         <div class="input-group">
@@ -38,6 +41,21 @@
           <select id="filterTag" class="form-select" onchange="applyFilterTag(this.value)"></select>
         </div>
       </div>
+
+      <!-- Thêm hashtag thủ công (nhanh) -->
+      <div class="col-12 col-md-3">
+        <div class="input-group">
+          <span class="input-group-text">Thêm tag</span>
+          <input type="text" id="quickTagInput" class="form-control" placeholder="VD: SALE"/>
+          <button class="btn btn-outline-primary" onclick="quickAddTag()">Thêm</button>
+        </div>
+        <small class="text-muted">* Tự lưu lịch sử ngày hiện tại sau mọi thay đổi.</small>
+      </div>
+    </div>
+
+    <!-- Trạng thái autosave -->
+    <div class="mb-3">
+      <span id="autoSaveStatus" class="badge text-bg-success autosave-badge" style="display:none;"></span>
     </div>
 
     <!-- Bảng users -->
@@ -149,6 +167,27 @@
     let tags  = [];
     let currentFilterTag = ""; // "" = All
 
+    // --- Auto-save lịch sử (debounce) ---
+    let autosaveTimer = null;
+    function formatTime(d){
+      return d.toLocaleTimeString("vi-VN", { hour12:false });
+    }
+    function showAutosaveStatus(){
+      const el = document.getElementById("autoSaveStatus");
+      const t = new Date();
+      el.textContent = "Đã tự lưu lúc " + formatTime(t);
+      el.style.display = "inline-block";
+      // Ẩn sau 4 giây
+      setTimeout(()=>{ el.style.display = "none"; }, 4000);
+    }
+    function autoSaveHistoryDebounced(){
+      clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(()=>{
+        saveHistory(true); // true = silent (không alert)
+        showAutosaveStatus();
+      }, 800); // chờ 0.8s sau thay đổi
+    }
+
     // ---------- Tags ----------
     function initTags() {
       const saved = localStorage.getItem("tags");
@@ -160,11 +199,29 @@
       renderFilterOptions();
     }
     function saveTags(){ localStorage.setItem("tags", JSON.stringify(tags)); }
+    function normalizeTag(str){
+      return (str||"").trim().replace(/\s+/g,"");
+    }
     function renderFilterOptions(){
       const sel = document.getElementById("filterTag");
       sel.innerHTML = `<option value="">All</option>` +
         tags.map(t=>`<option value="${t}" ${currentFilterTag===t?"selected":""}>${t}</option>`).join("") +
         `<option value="(none)" ${currentFilterTag==="(none)"?"selected":""}>(không)</option>`;
+    }
+    function quickAddTag(){
+      const ip = document.getElementById("quickTagInput");
+      let v = normalizeTag(ip.value);
+      if (!v) { ip.value = ""; return; }
+      if (!tags.includes(v)) {
+        tags.push(v);
+        saveTags();
+        renderFilterOptions();
+        renderTagList();
+        renderTable();
+        updateDashboard();
+        autoSaveHistoryDebounced(); // cũng tự lưu khi thêm tag (để snapshot ngày)
+      }
+      ip.value = "";
     }
 
     // ---------- Users ----------
@@ -175,6 +232,7 @@
       if (data) users = JSON.parse(data);
       renderTable();
       updateDashboard();
+      autoSaveHistoryDebounced(); // tự lưu snapshot lần đầu khi mở trang
     }
     function addUser(){
       const input = document.getElementById("userInput");
@@ -184,24 +242,29 @@
       input.value = "";
       renderTable();
       updateDashboard();
+      autoSaveHistoryDebounced();
     }
     function deleteUser(i){
       users.splice(i,1);
       renderTable();
       updateDashboard();
+      autoSaveHistoryDebounced();
     }
     function toggleComplete(i){
       users[i].completed = !users[i].completed;
       saveUsers();
+      autoSaveHistoryDebounced();
     }
     function updateComment(i, v){
       users[i].comments = parseInt(v)||0;
       updateDashboard();
+      autoSaveHistoryDebounced();
     }
     function updateUserTag(i, v){
       users[i].tag = v;
       saveUsers();
-      updateDashboard(); // để thống kê theo tag cập nhật ngay
+      updateDashboard(); // thống kê theo tag cập nhật ngay
+      autoSaveHistoryDebounced();
     }
 
     // ---------- Lọc theo hashtag ----------
@@ -219,7 +282,6 @@
     function renderTable(){
       const tbody = document.querySelector("#userTable tbody");
       tbody.innerHTML = "";
-      // Build dropdown options
       const baseOptions = ['<option value="">(không)</option>'].concat(
         tags.map(t=>`<option value="${t}">${t}</option>`)
       ).join("");
@@ -262,21 +324,23 @@
     }
     function addNewTag(){
       const ip = document.getElementById("newTagInput");
-      let v = (ip.value||"").trim().replace(/\s+/g,"");
-      if (!v || tags.includes(v)) { ip.value=""; return; }
+      let v = normalizeTag(ip.value);
+      if (!v) return;
+      if (tags.includes(v)) { ip.value=""; return; }
       tags.push(v); saveTags(); ip.value="";
       renderTagList(); renderFilterOptions(); renderTable(); updateDashboard();
+      autoSaveHistoryDebounced();
     }
     function deleteTag(index){
       const removed = tags.splice(index,1)[0];
       users = users.map(u => u.tag===removed ? {...u, tag:""} : u);
       saveTags(); saveUsers();
       renderTagList(); renderFilterOptions(); renderTable(); updateDashboard();
+      autoSaveHistoryDebounced();
     }
 
     // ---------- Dashboard ----------
     function computeTagStats(){
-      // Tập hợp tất cả nhãn gồm: (không) + các tag hiện có
       const allTags = ["(không)", ...tags];
       const stats = {};
       allTags.forEach(t=>stats[t]={ users:0, comments:0 });
@@ -310,14 +374,17 @@
     }
 
     // ---------- Lịch sử (ngày → tuần → tháng) ----------
-    function saveHistory(){
-      const today = new Date();
-      const key = today.toLocaleDateString("vi-VN"); // dd/mm/yyyy
+    function todayKey(){
+      return new Date().toLocaleDateString("vi-VN"); // dd/mm/yyyy
+    }
+    function saveHistory(silent=false){
+      const key = todayKey();
       const history = JSON.parse(localStorage.getItem("history")||"{}");
       const total = users.reduce((s,u)=> s+(parseInt(u.comments)||0), 0);
-      history[key] = { users, totalComments: total };
+      // Lưu snapshot ngày với users & total mới nhất
+      history[key] = { users, totalComments: total, savedAt: Date.now() };
       localStorage.setItem("history", JSON.stringify(history));
-      alert("✅ Đã lưu lịch sử ngày " + key);
+      if (!silent) alert("✅ Đã lưu lịch sử ngày " + key);
     }
     function getWeekRange(date){
       const d = new Date(date);
@@ -422,6 +489,8 @@
 
     // ---------- Start ----------
     window.onload = loadUsers;
+    // Lưu snapshot khi đóng/refresh tab (backup cuối)
+    window.addEventListener("beforeunload", () => saveHistory(true));
   </script>
 </body>
 </html>
