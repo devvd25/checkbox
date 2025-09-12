@@ -26,6 +26,9 @@
         <button class="btn btn-primary w-100" onclick="addUser()">➕ Thêm User</button>
       </div>
       <div class="col-6 col-md-auto d-grid d-md-block">
+        <button class="btn btn-success w-100" onclick="saveHistory()">💾 Lưu lịch sử</button>
+      </div>
+      <div class="col-12 col-md-auto d-grid d-md-block">
         <button class="btn btn-info w-100" onclick="viewHistory()">📅 Xem lịch sử</button>
       </div>
       <div class="col-12 col-md-3">
@@ -33,14 +36,6 @@
           <span class="input-group-text">Lọc tag</span>
           <select id="filterTag" class="form-select" onchange="applyFilterTag(this.value)"></select>
         </div>
-      </div>
-      <div class="col-12 col-md-3">
-        <div class="input-group">
-          <span class="input-group-text">Thêm tag</span>
-          <input type="text" id="quickTagInput" class="form-control" placeholder="VD: SALE"/>
-          <button class="btn btn-outline-primary" onclick="quickAddTag()">Thêm</button>
-        </div>
-        <small class="text-muted">* Tự lưu lịch sử, reset comment mỗi ngày.</small>
       </div>
     </div>
 
@@ -53,6 +48,7 @@
               <th>User</th>
               <th>Hoàn thành</th>
               <th>Số lần Comment</th>
+              <th>Note</th>
               <th>Hashtag</th>
               <th>Hành động</th>
             </tr>
@@ -65,7 +61,7 @@
     <!-- Dashboard -->
     <div class="dashboard">
       <div class="row g-3">
-        <div class="col-12 col-lg-4">
+        <div class="col-12 col-lg-6">
           <div class="card shadow-sm stat-card">
             <div class="card-body">
               <h5 class="card-title">📊 Tổng quan</h5>
@@ -76,7 +72,7 @@
             </div>
           </div>
         </div>
-        <div class="col-12 col-lg-8">
+        <div class="col-12 col-lg-6">
           <div class="card shadow-sm">
             <div class="card-body">
               <h6 class="mb-3">🏷️ Thống kê theo Hashtag</h6>
@@ -113,76 +109,42 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
         <table class="table table-bordered">
-          <thead class="table-light"><tr><th>User</th><th>Số comment</th><th>Hashtag</th></tr></thead>
+          <thead class="table-light"><tr><th>User</th><th>Số comment</th><th>Hashtag</th><th>Note</th></tr></thead>
           <tbody id="userCommentsBody"></tbody>
         </table>
       </div>
     </div></div>
   </div>
 
-  <!-- Modal: Tag Manager -->
-  <div class="modal fade" id="tagManagerModal" tabindex="-1">
-    <div class="modal-dialog"><div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">🏷️ Quản lý Hashtag</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <div class="mb-3 d-flex gap-2">
-          <input type="text" id="newTagInput" class="form-control" placeholder="Nhập hashtag mới"/>
-          <button class="btn btn-primary" onclick="addNewTag()">＋ Thêm</button>
-        </div>
-        <div id="tagList" class="d-flex flex-wrap"></div>
-      </div>
-    </div></div>
-  </div>
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    let users = [], tags = [], currentFilterTag = "";
-    let autosaveTimer = null;
+    let users = [], tags = ["XS","11PRM"], currentFilterTag = "";
 
     function todayKey(){ return new Date().toLocaleDateString("vi-VN"); }
-
-    // === Auto-save lịch sử (silent) ===
-    function autoSaveHistoryDebounced(){
-      clearTimeout(autosaveTimer);
-      autosaveTimer = setTimeout(()=>{ saveHistory(true); },800);
-    }
-
-    // === Tags ===
-    function initTags(){ tags=JSON.parse(localStorage.getItem("tags")||'["XS","11PRM"]'); saveTags(); renderFilterOptions(); }
-    function saveTags(){ localStorage.setItem("tags",JSON.stringify(tags)); }
-    function renderFilterOptions(){
-      const sel=document.getElementById("filterTag");
-      sel.innerHTML=`<option value="">All</option>`+tags.map(t=>`<option value="${t}" ${currentFilterTag===t?"selected":""}>${t}</option>`).join("")+`<option value="(none)" ${currentFilterTag==="(none)"?"selected":""}>(không)</option>`;
-    }
-    function quickAddTag(){
-      let v=document.getElementById("quickTagInput").value.trim(); if(!v)return;
-      if(!tags.includes(v)){ tags.push(v); saveTags(); renderFilterOptions(); renderTable(); updateDashboard(); autoSaveHistoryDebounced(); }
-      document.getElementById("quickTagInput").value="";
-    }
 
     // === Users ===
     function saveUsers(){ localStorage.setItem("users",JSON.stringify(users)); }
     function loadUsers(){
-      initTags();
       const data=localStorage.getItem("users"); if(data) users=JSON.parse(data);
       const lastDate=localStorage.getItem("lastDate");
       const today=todayKey();
       if(lastDate && lastDate!==today){
         saveHistory(true,lastDate);
-        users=users.map(u=>({...u,comments:0}));
+        // reset comments + completed khi qua ngày mới
+        users=users.map(u=>({...u,comments:0,completed:false}));
         saveUsers();
       }
       localStorage.setItem("lastDate",today);
-      renderTable(); updateDashboard(); autoSaveHistoryDebounced();
+      renderTable(); updateDashboard();
     }
     function addUser(){ let n=document.getElementById("userInput").value.trim(); if(!n)return;
-      users.push({name:n,completed:false,comments:0,tag:""}); document.getElementById("userInput").value="";
-      renderTable(); updateDashboard(); autoSaveHistoryDebounced();}
-    function deleteUser(i){ users.splice(i,1); renderTable(); updateDashboard(); autoSaveHistoryDebounced();}
-    function toggleComplete(i){ users[i].completed=!users[i].completed; saveUsers(); autoSaveHistoryDebounced();}
-    function updateComment(i,v){ users[i].comments=parseInt(v)||0; updateDashboard(); autoSaveHistoryDebounced();}
-    function updateUserTag(i,v){ users[i].tag=v; saveUsers(); updateDashboard(); autoSaveHistoryDebounced(); }
+      users.push({name:n,completed:false,comments:0,tag:"",note:""}); document.getElementById("userInput").value="";
+      renderTable(); updateDashboard();}
+    function deleteUser(i){ users.splice(i,1); renderTable(); updateDashboard();}
+    function toggleComplete(i){ users[i].completed=!users[i].completed; saveUsers();}
+    function updateComment(i,v){ users[i].comments=parseInt(v)||0; updateDashboard();}
+    function updateUserTag(i,v){ users[i].tag=v; saveUsers(); updateDashboard(); }
+    function updateNote(i,v){ users[i].note=v; saveUsers(); }
 
     // === Filter ===
     function applyFilterTag(val){ currentFilterTag=val; renderTable(); }
@@ -198,22 +160,11 @@
           <td>${u.name}</td>
           <td><input class="form-check-input" type="checkbox" ${u.completed?"checked":""} onclick="toggleComplete(${i})"></td>
           <td><input type="number" class="form-control text-center" value="${u.comments}" min="0" onchange="updateComment(${i}, this.value)"></td>
-          <td><div class="input-group"><select class="form-select" onchange="updateUserTag(${i}, this.value)">${options}</select>
-            <button class="btn btn-outline-primary" type="button" onclick="openTagManager()">＋</button></div></td>
+          <td><input type="text" class="form-control" value="${u.note||""}" placeholder="Ghi chú..." onchange="updateNote(${i}, this.value)"></td>
+          <td><select class="form-select" onchange="updateUserTag(${i}, this.value)">${options}</select></td>
           <td><button class="btn btn-danger btn-sm" onclick="deleteUser(${i})">🗑️</button></td></tr>`);
       }); saveUsers();
     }
-
-    // === Tag Manager ===
-    function openTagManager(){ renderTagList(); new bootstrap.Modal(document.getElementById("tagManagerModal")).show(); }
-    function renderTagList(){ const box=document.getElementById("tagList"); box.innerHTML="";
-      tags.forEach((t,idx)=>{ const el=document.createElement("div");
-        el.className="badge text-bg-secondary tag-badge d-flex align-items-center";
-        el.innerHTML=`<span>${t}</span><button class="btn btn-sm btn-light ms-2 py-0" onclick="deleteTag(${idx})">✕</button>`; box.appendChild(el); });
-    }
-    function addNewTag(){ let v=document.getElementById("newTagInput").value.trim(); if(!v||tags.includes(v))return;
-      tags.push(v); saveTags(); document.getElementById("newTagInput").value=""; renderTagList(); renderFilterOptions(); renderTable(); updateDashboard(); autoSaveHistoryDebounced();}
-    function deleteTag(idx){ const removed=tags.splice(idx,1)[0]; users=users.map(u=>u.tag===removed?{...u,tag:""}:u); saveTags(); saveUsers(); renderTagList(); renderFilterOptions(); renderTable(); updateDashboard(); autoSaveHistoryDebounced(); }
 
     // === Dashboard ===
     function computeTagStats(){ const all=["(không)",...tags], stats={}; all.forEach(t=>stats[t]={users:0,comments:0});
@@ -239,33 +190,23 @@
       const sunday=new Date(monday); sunday.setDate(monday.getDate()+6);
       return {key:monday.toISOString().slice(0,10), text:monday.toLocaleDateString("vi-VN")+" - "+sunday.toLocaleDateString("vi-VN")};
     }
-function deleteWeek(yearKey,monthKey,weekKey){
-  const hist=JSON.parse(localStorage.getItem("history")||"{}");
-  for(const dstr in hist){
-    const [dd,mm,yyyy]=dstr.split("/");
-    const d=new Date(yyyy,mm-1,dd);
-    const yk=d.getFullYear()+"", mk=(d.getMonth()+1)+"", wk=getWeekRange(d).key;
-    if(yk===yearKey && mk===monthKey && wk===weekKey){
-      delete hist[dstr];
+    function deleteWeek(yearKey,monthKey,weekKey){
+      const hist=JSON.parse(localStorage.getItem("history")||"{}");
+      for(const dstr in hist){
+        const [dd,mm,yyyy]=dstr.split("/"); const d=new Date(yyyy,mm-1,dd);
+        const yk=d.getFullYear()+"", mk=(d.getMonth()+1)+"", wk=getWeekRange(d).key;
+        if(yk===yearKey && mk===monthKey && wk===weekKey){ delete hist[dstr]; }
+      }
+      localStorage.setItem("history",JSON.stringify(hist)); viewHistory();
     }
-  }
-  localStorage.setItem("history",JSON.stringify(hist));
-  viewHistory(); // chỉ render lại, không auto-save
-}
-
-function deleteMonth(yearKey,monthKey){
-  const hist=JSON.parse(localStorage.getItem("history")||"{}");
-  for(const dstr in hist){
-    const [dd,mm,yyyy]=dstr.split("/");
-    const d=new Date(yyyy,mm-1,dd);
-    if(d.getFullYear()==yearKey && (d.getMonth()+1)==monthKey){
-      delete hist[dstr];
+    function deleteMonth(yearKey,monthKey){
+      const hist=JSON.parse(localStorage.getItem("history")||"{}");
+      for(const dstr in hist){
+        const [dd,mm,yyyy]=dstr.split("/"); const d=new Date(yyyy,mm-1,dd);
+        if(d.getFullYear()==yearKey && (d.getMonth()+1)==monthKey){ delete hist[dstr]; }
+      }
+      localStorage.setItem("history",JSON.stringify(hist)); viewHistory();
     }
-  }
-  localStorage.setItem("history",JSON.stringify(hist));
-  viewHistory(); // chỉ render lại
-}
-
     function viewHistory(){
       const hist=JSON.parse(localStorage.getItem("history")||"{}");
       const c=document.getElementById("historyContent"); c.innerHTML="";
@@ -300,13 +241,12 @@ function deleteMonth(yearKey,monthKey){
     // === Modal chi tiết user ===
     function viewUserComments(){
       const tb=document.getElementById("userCommentsBody"); tb.innerHTML="";
-      if(users.length===0) tb.innerHTML="<tr><td colspan='3'>Chưa có user</td></tr>";
-      else users.forEach(u=>tb.insertAdjacentHTML("beforeend",`<tr><td>${u.name}</td><td>${u.comments}</td><td>${u.tag||"(không)"}</td></tr>`));
+      if(users.length===0) tb.innerHTML="<tr><td colspan='4'>Chưa có user</td></tr>";
+      else users.forEach(u=>tb.insertAdjacentHTML("beforeend",`<tr><td>${u.name}</td><td>${u.comments}</td><td>${u.tag||"(không)"}</td><td>${u.note||""}</td></tr>`));
       new bootstrap.Modal(document.getElementById("userCommentsModal")).show();
     }
 
     window.onload=loadUsers;
-    window.addEventListener("beforeunload",()=>saveHistory(true));
   </script>
 </body>
 </html>
