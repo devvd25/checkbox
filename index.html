@@ -11,7 +11,6 @@
     .icon-btn { cursor:pointer; margin-left:8px; color:#0d6efd; }
     .tag-badge { margin:0 4px 4px 0; }
     .stat-card { min-width: 260px; }
-    .autosave-badge { font-size: 12px; }
   </style>
 </head>
 <body>
@@ -27,9 +26,6 @@
         <button class="btn btn-primary w-100" onclick="addUser()">➕ Thêm User</button>
       </div>
       <div class="col-6 col-md-auto d-grid d-md-block">
-        <button class="btn btn-outline-secondary w-100" onclick="saveHistory()" title="Đã bật auto-save">💾 Lưu (tùy chọn)</button>
-      </div>
-      <div class="col-12 col-md-auto d-grid d-md-block">
         <button class="btn btn-info w-100" onclick="viewHistory()">📅 Xem lịch sử</button>
       </div>
       <div class="col-12 col-md-3">
@@ -46,10 +42,6 @@
         </div>
         <small class="text-muted">* Tự lưu lịch sử, reset comment mỗi ngày.</small>
       </div>
-    </div>
-
-    <div class="mb-3">
-      <span id="autoSaveStatus" class="badge text-bg-success autosave-badge" style="display:none;"></span>
     </div>
 
     <!-- Bảng users -->
@@ -98,7 +90,6 @@
                   <tbody id="tagStatsBody"></tbody>
                 </table>
               </div>
-              <small class="text-muted d-block mt-2">* Bao gồm (không) cho các user chưa gán hashtag.</small>
             </div>
           </div>
         </div>
@@ -109,7 +100,7 @@
   <!-- Modal: Lịch sử -->
   <div class="modal fade" id="historyModal" tabindex="-1">
     <div class="modal-dialog modal-lg"><div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">📅 Lịch sử theo tuần & tháng</h5>
+      <div class="modal-header"><h5 class="modal-title">📅 Lịch sử theo tuần / tháng / năm</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body"><div id="historyContent"></div></div>
     </div></div>
@@ -151,16 +142,10 @@
 
     function todayKey(){ return new Date().toLocaleDateString("vi-VN"); }
 
-    // === Auto-save lịch sử ===
+    // === Auto-save lịch sử (silent) ===
     function autoSaveHistoryDebounced(){
       clearTimeout(autosaveTimer);
-      autosaveTimer = setTimeout(()=>{ saveHistory(true); showAutosaveStatus(); },800);
-    }
-    function showAutosaveStatus(){
-      const el=document.getElementById("autoSaveStatus");
-      el.textContent="Đã tự lưu lúc "+new Date().toLocaleTimeString("vi-VN",{hour12:false});
-      el.style.display="inline-block";
-      setTimeout(()=>{el.style.display="none";},4000);
+      autosaveTimer = setTimeout(()=>{ saveHistory(true); },800);
     }
 
     // === Tags ===
@@ -254,23 +239,49 @@
       const sunday=new Date(monday); sunday.setDate(monday.getDate()+6);
       return {key:monday.toISOString().slice(0,10), text:monday.toLocaleDateString("vi-VN")+" - "+sunday.toLocaleDateString("vi-VN")};
     }
+    function deleteWeek(yearKey,monthKey,weekKey){
+      const hist=JSON.parse(localStorage.getItem("history")||"{}");
+      for(const dstr in hist){
+        const [dd,mm,yyyy]=dstr.split("/"); const d=new Date(yyyy,mm-1,dd);
+        const yk=d.getFullYear()+"", mk=(d.getMonth()+1)+"", wk=getWeekRange(d).key;
+        if(yk===yearKey && mk===monthKey && wk===weekKey) delete hist[dstr];
+      }
+      localStorage.setItem("history",JSON.stringify(hist)); viewHistory();
+    }
+    function deleteMonth(yearKey,monthKey){
+      const hist=JSON.parse(localStorage.getItem("history")||"{}");
+      for(const dstr in hist){
+        const [dd,mm,yyyy]=dstr.split("/"); const d=new Date(yyyy,mm-1,dd);
+        if(d.getFullYear()==yearKey && (d.getMonth()+1)==monthKey) delete hist[dstr];
+      }
+      localStorage.setItem("history",JSON.stringify(hist)); viewHistory();
+    }
     function viewHistory(){
-      const history=JSON.parse(localStorage.getItem("history")||"{}");
-      const container=document.getElementById("historyContent"); container.innerHTML="";
-      if(Object.keys(history).length===0){ container.innerHTML="<p>Chưa có lịch sử</p>"; }
+      const hist=JSON.parse(localStorage.getItem("history")||"{}");
+      const c=document.getElementById("historyContent"); c.innerHTML="";
+      if(Object.keys(hist).length===0){ c.innerHTML="<p>Chưa có lịch sử</p>"; }
       else{
-        const monthly={};
-        for(const dstr in history){
+        const yearly={};
+        for(const dstr in hist){
           const [dd,mm,yyyy]=dstr.split("/"); const d=new Date(yyyy,mm-1,dd);
-          const mk=(d.getMonth()+1)+"/"+d.getFullYear(), wk=getWeekRange(d);
-          if(!monthly[mk]) monthly[mk]={}; if(!monthly[mk][wk.key]) monthly[mk][wk.key]={range:wk.text,total:0};
-          monthly[mk][wk.key].total+=history[dstr].totalComments;
+          const yk=d.getFullYear(), mk=d.getMonth()+1, wk=getWeekRange(d);
+          if(!yearly[yk]) yearly[yk]={};
+          if(!yearly[yk][mk]) yearly[yk][mk]={};
+          if(!yearly[yk][mk][wk.key]) yearly[yk][mk][wk.key]={range:wk.text,total:0};
+          yearly[yk][mk][wk.key].total+=hist[dstr].totalComments;
         }
-        Object.keys(monthly).forEach(month=>{
-          let html=`<h5 class="mt-3">📆 Tháng ${month}</h5><table class="table table-bordered"><thead class="table-light"><tr><th>Tuần</th><th>Tổng Comment</th></tr></thead><tbody>`;
-          let total=0; Object.keys(monthly[month]).forEach(week=>{ total+=monthly[month][week].total; html+=`<tr><td>${monthly[month][week].range}</td><td>${monthly[month][week].total}</td></tr>`; });
-          html+=`<tr class="table-summary"><td>Tổng tháng ${month}</td><td>${total}</td></tr></tbody></table>`;
-          container.insertAdjacentHTML("beforeend",html);
+        Object.keys(yearly).sort().forEach(year=>{
+          c.insertAdjacentHTML("beforeend",`<h4 class="mt-3">📅 Năm ${year}</h4>`);
+          Object.keys(yearly[year]).sort((a,b)=>a-b).forEach(month=>{
+            let html=`<h5 class="mt-2">Tháng ${month}</h5><table class="table table-bordered"><thead class="table-light"><tr><th>Tuần</th><th>Tổng Comment</th><th>Hành động</th></tr></thead><tbody>`;
+            let total=0;
+            Object.keys(yearly[year][month]).forEach(week=>{
+              const row=yearly[year][month][week]; total+=row.total;
+              html+=`<tr><td>${row.range}</td><td>${row.total}</td><td><button class="btn btn-sm btn-danger" onclick="deleteWeek('${year}','${month}','${week}')">❌ Xóa tuần</button></td></tr>`;
+            });
+            html+=`<tr class="table-summary"><td>Tổng tháng ${month}</td><td>${total}</td><td><button class="btn btn-sm btn-danger" onclick="deleteMonth('${year}','${month}')">❌ Xóa tháng</button></td></tr></tbody></table>`;
+            c.insertAdjacentHTML("beforeend",html);
+          });
         });
       }
       new bootstrap.Modal(document.getElementById("historyModal")).show();
