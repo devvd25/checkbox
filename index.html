@@ -135,7 +135,10 @@
         saveUsers();
       }
       localStorage.setItem("lastDate",today);
-      renderTable(); updateDashboard();
+
+      renderFilterOptions(); // ✅ fix filter
+      renderTable(); 
+      updateDashboard();
     }
     function addUser(){ let n=document.getElementById("userInput").value.trim(); if(!n)return;
       users.push({name:n,completed:false,comments:0,tag:"",note:""}); document.getElementById("userInput").value="";
@@ -147,8 +150,18 @@
     function updateNote(i,v){ users[i].note=v; saveUsers(); }
 
     // === Filter ===
+    function renderFilterOptions(){
+      const sel=document.getElementById("filterTag");
+      sel.innerHTML=`<option value="">All</option>`+
+        tags.map(t=>`<option value="${t}" ${currentFilterTag===t?"selected":""}>${t}</option>`).join("")+
+        `<option value="(none)" ${currentFilterTag==="(none)"?"selected":""}>(không)</option>`;
+    }
     function applyFilterTag(val){ currentFilterTag=val; renderTable(); }
-    function userPassFilter(u){ if(currentFilterTag==="")return true; if(currentFilterTag==="(none)")return !u.tag; return u.tag===currentFilterTag; }
+    function userPassFilter(u){ 
+      if(currentFilterTag==="")return true; 
+      if(currentFilterTag==="(none)")return !u.tag; 
+      return u.tag===currentFilterTag; 
+    }
 
     // === Render bảng users ===
     function renderTable(){
