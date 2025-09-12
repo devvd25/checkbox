@@ -239,23 +239,33 @@
       const sunday=new Date(monday); sunday.setDate(monday.getDate()+6);
       return {key:monday.toISOString().slice(0,10), text:monday.toLocaleDateString("vi-VN")+" - "+sunday.toLocaleDateString("vi-VN")};
     }
-    function deleteWeek(yearKey,monthKey,weekKey){
-      const hist=JSON.parse(localStorage.getItem("history")||"{}");
-      for(const dstr in hist){
-        const [dd,mm,yyyy]=dstr.split("/"); const d=new Date(yyyy,mm-1,dd);
-        const yk=d.getFullYear()+"", mk=(d.getMonth()+1)+"", wk=getWeekRange(d).key;
-        if(yk===yearKey && mk===monthKey && wk===weekKey) delete hist[dstr];
-      }
-      localStorage.setItem("history",JSON.stringify(hist)); viewHistory();
+function deleteWeek(yearKey,monthKey,weekKey){
+  const hist=JSON.parse(localStorage.getItem("history")||"{}");
+  for(const dstr in hist){
+    const [dd,mm,yyyy]=dstr.split("/");
+    const d=new Date(yyyy,mm-1,dd);
+    const yk=d.getFullYear()+"", mk=(d.getMonth()+1)+"", wk=getWeekRange(d).key;
+    if(yk===yearKey && mk===monthKey && wk===weekKey){
+      delete hist[dstr];
     }
-    function deleteMonth(yearKey,monthKey){
-      const hist=JSON.parse(localStorage.getItem("history")||"{}");
-      for(const dstr in hist){
-        const [dd,mm,yyyy]=dstr.split("/"); const d=new Date(yyyy,mm-1,dd);
-        if(d.getFullYear()==yearKey && (d.getMonth()+1)==monthKey) delete hist[dstr];
-      }
-      localStorage.setItem("history",JSON.stringify(hist)); viewHistory();
+  }
+  localStorage.setItem("history",JSON.stringify(hist));
+  viewHistory(); // chỉ render lại, không auto-save
+}
+
+function deleteMonth(yearKey,monthKey){
+  const hist=JSON.parse(localStorage.getItem("history")||"{}");
+  for(const dstr in hist){
+    const [dd,mm,yyyy]=dstr.split("/");
+    const d=new Date(yyyy,mm-1,dd);
+    if(d.getFullYear()==yearKey && (d.getMonth()+1)==monthKey){
+      delete hist[dstr];
     }
+  }
+  localStorage.setItem("history",JSON.stringify(hist));
+  viewHistory(); // chỉ render lại
+}
+
     function viewHistory(){
       const hist=JSON.parse(localStorage.getItem("history")||"{}");
       const c=document.getElementById("historyContent"); c.innerHTML="";
