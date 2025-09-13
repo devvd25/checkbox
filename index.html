@@ -9,7 +9,6 @@
     .dashboard { margin-top:20px; }
     .table-summary { background:#e9ecef; font-weight:bold; }
     .icon-btn { cursor:pointer; margin-left:8px; color:#0d6efd; }
-    .tag-badge { margin:0 4px 4px 0; }
     .stat-card { min-width: 260px; }
   </style>
 </head>
@@ -96,8 +95,10 @@
   <!-- Modal: Lịch sử -->
   <div class="modal fade" id="historyModal" tabindex="-1">
     <div class="modal-dialog modal-lg"><div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">📅 Lịch sử theo tuần / tháng / năm</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title">📅 Lịch sử theo tuần / tháng / năm</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <div class="modal-body"><div id="historyContent"></div></div>
     </div></div>
   </div>
@@ -105,8 +106,10 @@
   <!-- Modal: Chi tiết user -->
   <div class="modal fade" id="userCommentsModal" tabindex="-1">
     <div class="modal-dialog"><div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">👥 Chi tiết comment theo user</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title">👥 Chi tiết comment theo user</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <div class="modal-body">
         <table class="table table-bordered">
           <thead class="table-light"><tr><th>User</th><th>Số comment</th><th>Hashtag</th><th>Note</th></tr></thead>
@@ -130,19 +133,21 @@
       const today=todayKey();
       if(lastDate && lastDate!==today){
         saveHistory(true,lastDate);
-        // reset comments + completed khi qua ngày mới
         users=users.map(u=>({...u,comments:0,completed:false}));
         saveUsers();
       }
       localStorage.setItem("lastDate",today);
 
-      renderFilterOptions(); // ✅ fix filter
-      renderTable(); 
+      renderFilterOptions();
+      renderTable();
       updateDashboard();
     }
-    function addUser(){ let n=document.getElementById("userInput").value.trim(); if(!n)return;
-      users.push({name:n,completed:false,comments:0,tag:"",note:""}); document.getElementById("userInput").value="";
-      renderTable(); updateDashboard();}
+    function addUser(){
+      let n=document.getElementById("userInput").value.trim(); if(!n)return;
+      users.push({name:n,completed:false,comments:0,tag:"",note:""});
+      document.getElementById("userInput").value="";
+      renderTable(); updateDashboard();
+    }
     function deleteUser(i){ users.splice(i,1); renderTable(); updateDashboard();}
     function toggleComplete(i){ users[i].completed=!users[i].completed; saveUsers();}
     function updateComment(i,v){ users[i].comments=parseInt(v)||0; updateDashboard();}
@@ -157,10 +162,10 @@
         `<option value="(none)" ${currentFilterTag==="(none)"?"selected":""}>(không)</option>`;
     }
     function applyFilterTag(val){ currentFilterTag=val; renderTable(); }
-    function userPassFilter(u){ 
-      if(currentFilterTag==="")return true; 
-      if(currentFilterTag==="(none)")return !u.tag; 
-      return u.tag===currentFilterTag; 
+    function userPassFilter(u){
+      if(currentFilterTag==="")return true;
+      if(currentFilterTag==="(none)")return !u.tag;
+      return u.tag===currentFilterTag;
     }
 
     // === Render bảng users ===
@@ -176,17 +181,32 @@
           <td><input type="text" class="form-control" value="${u.note||""}" placeholder="Ghi chú..." onchange="updateNote(${i}, this.value)"></td>
           <td><select class="form-select" onchange="updateUserTag(${i}, this.value)">${options}</select></td>
           <td><button class="btn btn-danger btn-sm" onclick="deleteUser(${i})">🗑️</button></td></tr>`);
-      }); saveUsers();
+      });
+      saveUsers();
     }
 
     // === Dashboard ===
-    function computeTagStats(){ const all=["(không)",...tags], stats={}; all.forEach(t=>stats[t]={users:0,comments:0});
-      users.forEach(u=>{const key=u.tag||"(không)"; stats[key].users++; stats[key].comments+=(u.comments||0);}); return stats;}
-    function renderTagStats(){ const s=computeTagStats(), body=document.getElementById("tagStatsBody"); body.innerHTML="";
-      Object.keys(s).forEach(k=>{ body.insertAdjacentHTML("beforeend",`<tr><td>${k}</td><td>${s[k].users}</td><td>${s[k].comments}</td></tr>`);}); }
-    function updateDashboard(){ const total=users.reduce((s,u)=>s+(u.comments||0),0);
+    function computeTagStats(){
+      const all=["(không)",...tags], stats={};
+      all.forEach(t=>stats[t]={users:0,comments:0});
+      users.forEach(u=>{
+        const key=u.tag||"(không)";
+        stats[key].users++;
+        stats[key].comments+=(u.comments||0);
+      });
+      return stats;
+    }
+    function renderTagStats(){
+      const s=computeTagStats(), body=document.getElementById("tagStatsBody"); body.innerHTML="";
+      Object.keys(s).forEach(k=>{
+        body.insertAdjacentHTML("beforeend",`<tr><td>${k}</td><td>${s[k].users}</td><td>${s[k].comments}</td></tr>`);
+      });
+    }
+    function updateDashboard(){
+      const total=users.reduce((s,u)=>s+(u.comments||0),0);
       document.getElementById("totalComments").innerHTML="Tổng số comment: "+total+' <span class="icon-btn" onclick="viewUserComments()">👁</span>';
-      renderTagStats(); saveUsers(); }
+      renderTagStats(); saveUsers();
+    }
 
     // === History ===
     function saveHistory(silent=false,dateOverride=null){
@@ -206,19 +226,32 @@
     function deleteWeek(yearKey,monthKey,weekKey){
       const hist=JSON.parse(localStorage.getItem("history")||"{}");
       for(const dstr in hist){
-        const [dd,mm,yyyy]=dstr.split("/"); const d=new Date(yyyy,mm-1,dd);
+        const [dd,mm,yyyy]=dstr.split("/");
+        const d=new Date(yyyy,mm-1,dd);
         const yk=d.getFullYear()+"", mk=(d.getMonth()+1)+"", wk=getWeekRange(d).key;
         if(yk===yearKey && mk===monthKey && wk===weekKey){ delete hist[dstr]; }
       }
-      localStorage.setItem("history",JSON.stringify(hist)); viewHistory();
+      localStorage.setItem("history",JSON.stringify(hist));
+      location.reload();
     }
     function deleteMonth(yearKey,monthKey){
       const hist=JSON.parse(localStorage.getItem("history")||"{}");
       for(const dstr in hist){
-        const [dd,mm,yyyy]=dstr.split("/"); const d=new Date(yyyy,mm-1,dd);
+        const [dd,mm,yyyy]=dstr.split("/");
+        const d=new Date(yyyy,mm-1,dd);
         if(d.getFullYear()==yearKey && (d.getMonth()+1)==monthKey){ delete hist[dstr]; }
       }
-      localStorage.setItem("history",JSON.stringify(hist)); viewHistory();
+      localStorage.setItem("history",JSON.stringify(hist));
+      location.reload();
+    }
+    function deleteYear(yearKey){
+      const hist=JSON.parse(localStorage.getItem("history")||"{}");
+      for(const dstr in hist){
+        const [dd,mm,yyyy]=dstr.split("/");
+        if(yyyy==yearKey){ delete hist[dstr]; }
+      }
+      localStorage.setItem("history",JSON.stringify(hist));
+      location.reload();
     }
     function viewHistory(){
       const hist=JSON.parse(localStorage.getItem("history")||"{}");
@@ -235,7 +268,10 @@
           yearly[yk][mk][wk.key].total+=hist[dstr].totalComments;
         }
         Object.keys(yearly).sort().forEach(year=>{
-          c.insertAdjacentHTML("beforeend",`<h4 class="mt-3">📅 Năm ${year}</h4>`);
+          c.insertAdjacentHTML("beforeend",
+            `<h4 class="mt-3">📅 Năm ${year} 
+              <button class="btn btn-sm btn-danger ms-2" onclick="deleteYear('${year}')">❌ Xóa năm</button>
+            </h4>`);
           Object.keys(yearly[year]).sort((a,b)=>a-b).forEach(month=>{
             let html=`<h5 class="mt-2">Tháng ${month}</h5><table class="table table-bordered"><thead class="table-light"><tr><th>Tuần</th><th>Tổng Comment</th><th>Hành động</th></tr></thead><tbody>`;
             let total=0;
@@ -255,7 +291,8 @@
     function viewUserComments(){
       const tb=document.getElementById("userCommentsBody"); tb.innerHTML="";
       if(users.length===0) tb.innerHTML="<tr><td colspan='4'>Chưa có user</td></tr>";
-      else users.forEach(u=>tb.insertAdjacentHTML("beforeend",`<tr><td>${u.name}</td><td>${u.comments}</td><td>${u.tag||"(không)"}</td><td>${u.note||""}</td></tr>`));
+      else users.forEach(u=>
+        tb.insertAdjacentHTML("beforeend",`<tr><td>${u.name}</td><td>${u.comments}</td><td>${u.tag||"(không)"}</td><td>${u.note||""}</td></tr>`));
       new bootstrap.Modal(document.getElementById("userCommentsModal")).show();
     }
 
